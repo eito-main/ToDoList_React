@@ -1,4 +1,5 @@
-import { useState } from "react"
+import axios from "axios"
+import { useState, useEffect } from "react"
 import "./ToDoList.css"
 
 function ToDoList() {
@@ -8,15 +9,59 @@ function ToDoList() {
 
 	function handlePush() {
 		if (todo !== "") {
-			setTodos(todos.concat([todo]))
+			axios
+				.post("http://localhost:8000/api/tasks", {
+					name: todo,
+				})
+				.then(() => {
+					handleGetTodos()
+				})
 			setTodo("")
 		}
 	}
 	function handleComplete(index) {
-		setCompletedTodos(completedTodos.concat(todos[index]))
-		setTodos(todos.slice(0, index).concat(todos.slice(index + 1)))
+		axios.put(`http://localhost:8000/api/tasks/` + todos[index].id).then(() => {
+			handleGetTodos()
+		})
 	}
-    return (
+	function handleDelete(index) {
+		axios
+			.delete(`http://localhost:8000/api/tasks/` + completedTodos[index].id)
+			.then(() => {
+				handleGetTodos()
+			})
+	}
+	function handleGetTodos() {
+		axios.get("http://localhost:8000/api/tasks").then((res) => {
+            
+			let tmpCompletedTodos = []
+			let tmpTodos = []
+			for (let i = 0; i < res.data.length; i++) {
+				if (res.data[i].finished) {
+					tmpCompletedTodos = tmpCompletedTodos.concat([
+						{
+							id: res.data[i].id,
+							name: res.data[i].name,
+						},
+					])
+				} else {
+					tmpTodos = tmpTodos.concat([
+						{
+							id: res.data[i].id,
+							name: res.data[i].name,
+						},
+					])
+				}
+			}
+			setCompletedTodos(tmpCompletedTodos)
+			setTodos(tmpTodos)
+		})
+	}
+	useEffect(() => {
+		handleGetTodos()
+	}, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+	return (
 		<div className="todoList">
 			<h1 className="title">ToDoリスト</h1>
 			<input value={todo} onChange={(e) => setTodo(e.target.value)} />
@@ -27,16 +72,20 @@ function ToDoList() {
 			<h3>完</h3>
 			<ul className="ul">
 				{completedTodos.map((completedTodo, index) => (
-					<li key={index} className="li">
-						{completedTodo}
+					<li key={completedTodo.id} className="li">
+						{completedTodo.name}
+						<button onClick={() => handleDelete(index)} className="button">
+							タスクを消す
+						</button>
 					</li>
 				))}
 			</ul>
+
 			<h3>未完</h3>
 			<ul className="ul">
 				{todos.map((todo, index) => (
-					<li key={index} className="li">
-						{todo}
+					<li key={todo.id} className="li">
+						{todo.name}
 						<button onClick={() => handleComplete(index)} className="button">
 							完了する
 						</button>
